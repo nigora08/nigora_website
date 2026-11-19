@@ -77,6 +77,11 @@ button {
   object-fit: cover;
 }
 
+.field img {
+  transform: scale(1.08);
+  animation: drift-photo 32s ease-in-out infinite alternate;
+}
+
 .field .for-dark,
 .print .for-dark {
   display: none;
@@ -114,11 +119,11 @@ button {
   height: 100%;
   pointer-events: none;
   z-index: 1;
-  opacity: 0.28;
+  opacity: 0.5;
 }
 
 :root[data-theme="dark"] .ocean {
-  opacity: 0.4;
+  opacity: 0.42;
 }
 
 .surface {
@@ -170,7 +175,19 @@ button {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
-  margin-bottom: clamp(1rem, 3vh, 2rem);
+  margin-bottom: clamp(0.4rem, 1.4vh, 0.9rem);
+  animation: lift 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: opacity 0.7s ease;
+}
+
+.stage[data-open="true"] .prints {
+  opacity: 0.62;
+}
+
+.drift {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(calc(var(--current-x, 0) * -26px), calc(var(--current-y, 0) * -16px), 0);
 }
 
 .print {
@@ -184,6 +201,30 @@ button {
 
 .print img {
   height: 100%;
+}
+
+.print::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(
+    115deg,
+    transparent 36%,
+    rgba(255, 255, 255, 0.42) 48%,
+    transparent 60%
+  );
+  mix-blend-mode: soft-light;
+  transform: translateX(-40%);
+  animation: sheen 11s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.print-surface::after {
+  animation-delay: -4s;
+}
+
+.print-caustic::after {
+  animation-delay: -7s;
 }
 
 :root[data-theme="dark"] .print {
@@ -215,6 +256,58 @@ button {
   animation: tilt-c 13s ease-in-out infinite alternate;
 }
 
+.waterline {
+  height: 46px;
+  margin: 0 0 0.15rem -6%;
+  width: 112%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.waterline svg {
+  display: block;
+  width: 200%;
+  height: 100%;
+  animation: tide 16s linear infinite;
+}
+
+.waterline.surge svg {
+  animation-duration: 3.4s;
+}
+
+.waterline path {
+  fill: none;
+  stroke: var(--mark);
+  stroke-width: 1.25;
+  opacity: 0.42;
+}
+
+.waterline path:last-child {
+  opacity: 0.22;
+}
+
+.name {
+  position: relative;
+  transform: translate3d(calc(var(--current-x, 0) * 16px), calc(var(--current-y, 0) * 10px), 0);
+}
+
+.name::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -12%;
+  right: 18%;
+  top: -70%;
+  bottom: -55%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.62), transparent 72%);
+  animation: pool 10s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+:root[data-theme="dark"] .name::before {
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.09), transparent 70%);
+}
+
 h1 {
   margin: 0;
   max-width: 100%;
@@ -239,7 +332,18 @@ h1 span:first-child {
 h1 span:last-child {
   animation:
     rise 1.15s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both,
-    drift 11s ease-in-out 1.2s infinite alternate;
+    drift 9s ease-in-out 1.2s infinite alternate;
+}
+
+h1 span:last-child::after {
+  content: "";
+  display: block;
+  width: min(42%, 9.5rem);
+  height: 1px;
+  margin-top: 0.22em;
+  background: linear-gradient(90deg, var(--mark), transparent);
+  transform-origin: left center;
+  animation: glint 6.5s ease-in-out infinite;
 }
 
 .sr-only {
@@ -426,10 +530,21 @@ nav button:hover {
 @media (prefers-reduced-motion: reduce) {
   h1 span,
   h1 span:last-child,
+  h1 span:last-child::after,
   nav button,
   .print,
+  .print::after,
+  .field img,
+  .prints,
+  .waterline svg,
+  .name::before,
   .flash.on {
     animation: none;
+  }
+
+  .drift,
+  .name {
+    transform: none;
   }
 }
 
@@ -477,5 +592,64 @@ nav button:hover {
   }
   100% {
     opacity: 0;
+  }
+}
+
+@keyframes drift-photo {
+  from {
+    transform: scale(1.08) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.16) translate3d(-2.2%, -1.4%, 0);
+  }
+}
+
+@keyframes lift {
+  from {
+    transform: translateY(22px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes sheen {
+  0%,
+  18% {
+    transform: translateX(-55%);
+  }
+  55%,
+  100% {
+    transform: translateX(55%);
+  }
+}
+
+@keyframes tide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes pool {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6%, -8%, 0) scale(1.08);
+  }
+}
+
+@keyframes glint {
+  0%,
+  100% {
+    transform: scaleX(0.4);
+    opacity: 0.28;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 0.8;
   }
 }
