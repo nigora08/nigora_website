@@ -69,8 +69,7 @@ button {
   pointer-events: none;
 }
 
-.field img,
-.print img {
+.field img {
   display: block;
   width: 100%;
   height: 100%;
@@ -82,18 +81,15 @@ button {
   animation: drift-photo 32s ease-in-out infinite alternate;
 }
 
-.field .for-dark,
-.print .for-dark {
+.field .for-dark {
   display: none;
 }
 
-:root[data-theme="dark"] .field .for-light,
-:root[data-theme="dark"] .print .for-light {
+:root[data-theme="dark"] .field .for-light {
   display: none;
 }
 
-:root[data-theme="dark"] .field .for-dark,
-:root[data-theme="dark"] .print .for-dark {
+:root[data-theme="dark"] .field .for-dark {
   display: block;
 }
 
@@ -112,13 +108,17 @@ button {
     linear-gradient(180deg, rgba(12, 13, 15, 0.2), rgba(12, 13, 15, 0.72));
 }
 
-.ocean {
+.ocean,
+.life {
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
   z-index: 1;
+}
+
+.ocean {
   opacity: 0.5;
 }
 
@@ -171,89 +171,151 @@ button {
     clamp(1.4rem, 5.2vw, 5.6rem);
 }
 
-.prints {
-  position: relative;
+.open-water {
   flex: 1 1 auto;
   min-height: 0;
+  overflow: auto;
   margin-bottom: clamp(0.4rem, 1.4vh, 0.9rem);
-  animation: lift 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
-  transition: opacity 0.7s ease;
 }
 
-.stage[data-open="true"] .prints {
-  opacity: 0.62;
+.board h2,
+.entry h3 {
+  margin: 0 0 0.45rem;
+  font-family: "Newsreader Variable", Newsreader, serif;
+  font-weight: 460;
+  font-optical-sizing: none;
+  font-variation-settings: "opsz" 72;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
 }
 
-.drift {
+.board h2 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+}
+
+.entry {
+  margin-top: 1.35rem;
+}
+
+.entry img {
+  display: block;
+  width: min(100%, 38rem);
+  height: auto;
+  margin: 0 0 0.7rem;
+}
+
+.entry h3 {
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+}
+
+.entry p {
+  max-width: 38rem;
+  margin: 0.2rem 0 0;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.entry a {
+  color: inherit;
+}
+
+.composer,
+.gate {
+  display: grid;
+  gap: 0.45rem;
+  max-width: 36rem;
+  margin-top: 0.8rem;
+}
+
+.composer input,
+.composer textarea,
+.gate input,
+.file {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--rail);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.45rem 0;
+}
+
+.composer textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.composer input::placeholder,
+.composer textarea::placeholder,
+.gate input::placeholder {
+  color: var(--text);
+  opacity: 0.55;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.file input {
   position: absolute;
-  inset: 0;
-  transform: translate3d(calc(var(--current-x, 0) * -26px), calc(var(--current-y, 0) * -16px), 0);
-}
-
-.print {
-  position: absolute;
-  margin: 0;
-  padding: 0.42rem;
-  background: #f6f3ee;
-  box-shadow: 0 16px 36px rgba(8, 36, 42, 0.16);
+  width: 1px;
+  height: 1px;
   overflow: hidden;
+  clip: rect(0, 0, 0, 0);
 }
 
-.print img {
-  height: 100%;
+.composer button,
+.entry-tools button,
+.gate button,
+.edit-toggle {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0.3rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--nav);
+  font: inherit;
+  text-align: left;
 }
 
-.print::after {
-  content: "";
-  position: absolute;
-  inset: -20%;
-  background: linear-gradient(
-    115deg,
-    transparent 36%,
-    rgba(255, 255, 255, 0.42) 48%,
-    transparent 60%
-  );
-  mix-blend-mode: soft-light;
-  transform: translateX(-40%);
-  animation: sheen 11s ease-in-out infinite;
-  pointer-events: none;
+.entry-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 0.45rem;
 }
 
-.print-surface::after {
-  animation-delay: -4s;
+.form-error {
+  margin: 0;
+  font-size: 0.92rem;
 }
 
-.print-caustic::after {
-  animation-delay: -7s;
+.gate {
+  align-self: flex-end;
+  width: 100%;
 }
 
-:root[data-theme="dark"] .print {
-  background: #16181b;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+.gate input,
+.gate button {
+  text-align: right;
 }
 
-.print-shafts {
-  top: 2%;
-  left: 0;
-  width: min(38%, 250px);
-  height: 78%;
-  animation: tilt-a 14s ease-in-out infinite alternate;
+.edit-toggle {
+  align-self: flex-end;
+  margin-top: 0.2rem;
+  padding-right: 0.85rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  opacity: 0.68;
 }
 
-.print-surface {
-  top: 8%;
-  left: 24%;
-  width: min(68%, 520px);
-  height: 46%;
-  animation: tilt-b 16s ease-in-out infinite alternate;
-}
-
-.print-caustic {
-  right: 6%;
-  bottom: 2%;
-  width: min(42%, 280px);
-  height: 40%;
-  animation: tilt-c 13s ease-in-out infinite alternate;
+.edit-toggle:hover,
+.edit-toggle:focus-visible {
+  opacity: 1;
 }
 
 .waterline {
@@ -471,24 +533,6 @@ nav button:hover {
     padding: 0.85rem 0.55rem 8vh 0.85rem;
   }
 
-  .print-surface {
-    display: none;
-  }
-
-  .print-shafts {
-    top: 0;
-    left: 0;
-    width: 74%;
-    height: 68%;
-  }
-
-  .print-caustic {
-    right: 0;
-    bottom: 0;
-    width: 68%;
-    height: 42%;
-  }
-
   h1 {
     font-size: clamp(2rem, 8.4vw, 2.7rem);
   }
@@ -509,14 +553,23 @@ nav button:hover {
   }
 }
 
-@media (max-height: 760px) {
+@media (max-width: 720px), (max-height: 760px) {
   .rail {
     justify-content: flex-start;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  nav {
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
   }
 
-  .stage {
-    justify-content: center;
+  .theme,
+  .edit-toggle,
+  .gate {
+    flex: none;
   }
 }
 
@@ -532,10 +585,7 @@ nav button:hover {
   h1 span:last-child,
   h1 span:last-child::after,
   nav button,
-  .print,
-  .print::after,
   .field img,
-  .prints,
   .waterline svg,
   .name::before,
   .flash.on {

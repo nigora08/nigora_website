@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import Ocean from "./Ocean.jsx";
+import SectionBoard from "./SectionBoard.jsx";
+import { getContent, getSession, postJson } from "./edit.js";
 import { SECTIONS, sectionFromHash } from "./sections.js";
 
 export default function App() {
   const [theme, setTheme] = useState(initialTheme);
   const [active, setActive] = useState(() => sectionFromHash(window.location.hash));
   const [turning, setTurning] = useState(false);
+  const [content, setContent] = useState({});
+  const [session, setSession] = useState({ editing: false, needsSetup: false });
+  const [gateOpen, setGateOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -39,6 +46,13 @@ export default function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [active]);
+
+  useEffect(() => {
+    getSession().then(setSession).catch(() => {});
+    getContent()
+      .then((data) => setContent(data.sections || {}))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -83,7 +97,32 @@ export default function App() {
     window.setTimeout(() => setTurning(false), 900);
   }
 
+  async function submitPassword(event) {
+    event.preventDefault();
+    setAuthError("");
+    try {
+      const path = session.needsSetup ? "/api/setup" : "/api/login";
+      const next = await postJson(path, { password });
+      setSession(next);
+      setPassword("");
+      setGateOpen(false);
+    } catch (reason) {
+      setAuthError(reason.message);
+    }
+  }
+
+  async function closeEditing() {
+    try {
+      const next = await postJson("/api/logout", {});
+      setSession((currentSession) => ({ ...currentSession, ...next, needsSetup: false }));
+    } catch {
+      setSession((currentSession) => ({ ...currentSession, editing: false }));
+    }
+    setGateOpen(false);
+  }
+
   const current = SECTIONS.find((section) => section.id === active);
+  const entries = current ? content[current.id] || [] : [];
 
   return (
     <>
@@ -95,20 +134,16 @@ export default function App() {
       <div className="surface" aria-hidden="true" />
       <div className={turning ? "flash on" : "flash"} aria-hidden="true" />
       <div className="shell">
-        <main className="stage" data-open={current ? "true" : "false"}>
-          <div className="prints">
-            <div className="drift">
-              <figure className="print print-shafts">
-                <img src="/images/shafts-teal.jpg" alt="" />
-              </figure>
-              <figure className="print print-surface">
-                <img className="for-light" src="/images/surface-pale.jpg" alt="" />
-                <img className="for-dark" src="/images/ink-night.jpg" alt="" />
-              </figure>
-              <figure className="print print-caustic">
-                <img src="/images/caustic-sand.jpg" alt="" />
-              </figure>
-            </div>
+        <main className="stage">
+          <div className="open-water">
+            {current ? (
+              <SectionBoard
+                section={current}
+                entries={entries}
+                editing={session.editing}
+                onChanged={setContent}
+              />
+            ) : null}
           </div>
           <div className={turning ? "waterline surge" : "waterline"} aria-hidden="true">
             <svg viewBox="0 0 200 40" preserveAspectRatio="none">
@@ -122,9 +157,6 @@ export default function App() {
               <span>Nigora</span>
             </h1>
           </div>
-          <section aria-label={current ? current.label : undefined} hidden={!current}>
-            {current ? <h2 className="sr-only">{current.label}</h2> : null}
-          </section>
         </main>
         <aside className="rail">
           <nav aria-label="Sections">
@@ -153,6 +185,34 @@ export default function App() {
           >
             {theme === "dark" ? "Light" : "Dark"}
           </button>
+          {session.editing ? (
+            <button type="button" className="edit-toggle" onClick={closeEditing}>
+              Done
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="edit-toggle"
+              aria-expanded={gateOpen}
+              onClick={() => setGateOpen((open) => !open)}
+            >
+              Edit
+            </button>
+          )}
+          {gateOpen && !session.editing ? (
+            <form className="gate" onSubmit={submitPassword}>
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={session.needsSetup ? "Choose a password" : "Password"}
+                aria-label={session.needsSetup ? "Choose a password" : "Password"}
+                autoComplete={session.needsSetup ? "new-password" : "current-password"}
+              />
+              {authError ? <p className="form-error">{authError}</p> : null}
+              <button type="submit">{session.needsSetup ? "Set" : "Enter"}</button>
+            </form>
+          ) : null}
         </aside>
       </div>
     </>

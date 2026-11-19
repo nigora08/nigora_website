@@ -1,5 +1,5 @@
-// Bodies stay empty until Nigora sends them.
-// The full name and a resume link belong only in Contact, and not yet.
+// Section pages stay blank until Nigora adds them.
+// The full name belongs in Contact only when she writes it there.
 
 export const SECTIONS = [
   { id: "projects", label: "Projects" },
