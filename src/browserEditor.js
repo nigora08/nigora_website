@@ -1,17 +1,19 @@
-import { SECTIONS } from "./sections.js";
+import { EVENT_CATEGORIES, EVENT_SECTION_ID, SECTIONS, isRealDate, matchCategory, tidyCategory } from "./sections.js";
 
 const HASH_KEY = "nigora-editor";
 const SESSION_KEY = "nigora-editing";
 const CONTENT_KEY = "nigora-sections";
+const CATEGORIES_KEY = "nigora-categories";
 const ITERATIONS = 100_000;
 const SECTION_IDS = new Set(SECTIONS.map((section) => section.id));
 
 export function browserCall(method, path, payload) {
   if (method === "GET" && path === "/api/session") return browserSession();
-  if (method === "GET" && path === "/api/content") return { sections: loadSections() };
+  if (method === "GET" && path === "/api/content") return saved();
   if (method === "POST" && path === "/api/setup") return setup(payload?.password);
   if (method === "POST" && path === "/api/login") return login(payload?.password);
   if (method === "POST" && path === "/api/logout") return logout();
+  if (method === "POST" && path === "/api/categories") return addCategory(payload || {});
   if (method === "POST" && path === "/api/entries") return createEntry(payload || {});
   const entry = path.match(/^\/api\/entries\/([a-zA-Z0-9-]+)$/);
   if (entry && method === "PATCH") return updateEntry(entry[1], payload || {});
@@ -61,9 +63,11 @@ function createEntry(body) {
     body: input.body,
     linkUrl: input.linkUrl,
     imageId: input.image || null,
+    eventDate: input.eventDate,
+    category: input.category,
   });
   saveSections(sections);
-  return { sections };
+  return saved();
 }
 
 function updateEntry(id, body) {
@@ -71,7 +75,11 @@ function updateEntry(id, body) {
   const sections = loadSections();
   const found = findEntry(sections, id);
   if (!found) fail("That piece is gone.");
-  const input = readEntry(body, { partial: true, hasImage: Boolean(found.entry.imageId) });
+  const input = readEntry(body, {
+    partial: true,
+    hasImage: Boolean(found.entry.imageId),
+    sectionId: sectionIdOf(sections, id),
+  });
   let imageId = found.entry.imageId;
   if (input.image === null) imageId = null;
   if (input.image) imageId = input.image;
@@ -81,9 +89,11 @@ function updateEntry(id, body) {
     body: input.body,
     linkUrl: input.linkUrl,
     imageId,
+    eventDate: input.eventDate,
+    category: input.category,
   };
   saveSections(sections);
-  return { sections };
+  return saved();
 }
 
 function removeEntry(id) {
@@ -93,24 +103,38 @@ function removeEntry(id) {
   if (!found) fail("That piece is gone.");
   found.list.splice(found.index, 1);
   saveSections(sections);
-  return { sections };
+  return saved();
 }
 
 function moveEntry(id, body) {
   requireEditor();
-  const direction = body.direction === "up" ? -1 : body.direction === "down" ? 1 : 0;
-  if (!direction) fail("Choose a direction.");
   const sections = loadSections();
   const found = findEntry(sections, id);
   if (!found) fail("That piece is gone.");
-  const next = found.index + direction;
-  if (found.list[next]) {
-    const current = found.list[found.index];
-    found.list[found.index] = found.list[next];
-    found.list[next] = current;
+  let target = null;
+  if (body.direction === "up") target = found.index - 1;
+  else if (body.direction === "down") target = found.index + 1;
+  else if (Number.isInteger(body.to)) target = body.to;
+  else fail("Choose a direction.");
+  if (target !== found.index && target >= 0 && target < found.list.length) {
+    const [moved] = found.list.splice(found.index, 1);
+    found.list.splice(target, 0, moved);
     saveSections(sections);
   }
-  return { sections };
+  return saved();
+}
+
+function addCategory(body) {
+  requireEditor();
+  const tidy = tidyCategory(body.name);
+  if (!tidy) fail("Name that category.");
+  const existing = matchCategory(tidy, loadCategories());
+  if (!existing) {
+    const next = [...loadCategories(), tidy];
+    writeJson(CATEGORIES_KEY, next);
+    return { categories: next, name: tidy };
+  }
+  return { categories: loadCategories(), name: existing };
 }
 
 function requireEditor() {
@@ -136,7 +160,34 @@ function normalizeEntry(row) {
     body: String(row.body || ""),
     linkUrl: String(row.linkUrl || ""),
     imageId: row.imageId ? String(row.imageId) : null,
+    eventDate: String(row.eventDate || ""),
+    category: String(row.category || ""),
   };
+}
+
+function sectionIdOf(sections, id) {
+  const found = Object.entries(sections).find(([, list]) => list.some((entry) => entry.id === id));
+  return found ? found[0] : "";
+}
+
+function saved() {
+  return { sections: loadSections(), categories: loadCategories() };
+}
+
+function loadCategories() {
+  const stored = readJson(CATEGORIES_KEY);
+  if (!Array.isArray(stored)) return [];
+  const builtin = new Set(EVENT_CATEGORIES.map((name) => name.toLowerCase()));
+  const seen = new Set();
+  const names = [];
+  for (const item of stored) {
+    const name = tidyCategory(item);
+    const key = name.toLowerCase();
+    if (!name || builtin.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    names.push(name);
+  }
+  return names;
 }
 
 function findEntry(sections, id) {
@@ -147,9 +198,9 @@ function findEntry(sections, id) {
   return null;
 }
 
-function readEntry(body, { partial = false, hasImage = false } = {}) {
-  const sectionId = String(body.sectionId || "");
-  if (!partial && !SECTION_IDS.has(sectionId)) fail("Choose a section.");
+function readEntry(body, { partial = false, hasImage = false, sectionId = "" } = {}) {
+  const resolved = partial ? sectionId : String(body.sectionId || "");
+  if (!partial && !SECTION_IDS.has(resolved)) fail("Choose a section.");
   const title = String(body.title || "").trim().slice(0, 200);
   const text = String(body.body || "").trim().slice(0, 20000);
   const linkUrl = cleanLink(body.linkUrl);
@@ -157,8 +208,18 @@ function readEntry(body, { partial = false, hasImage = false } = {}) {
   if (body.image === null) image = null;
   else if (body.image) image = parseImage(body.image);
   const keepsImage = image === undefined && hasImage;
-  if (!title && !text && !linkUrl && !image && !keepsImage) fail("Add a note, a link, or a picture.");
-  return { sectionId, title, body: text, linkUrl, image };
+  const event = resolved === EVENT_SECTION_ID;
+  let eventDate = "";
+  let category = "";
+  if (event) {
+    eventDate = String(body.eventDate || "").trim();
+    if (!eventDate) fail("Add a date.");
+    if (!isRealDate(eventDate)) fail("Use a real date.");
+    category = matchCategory(body.category, loadCategories());
+    if (!category) fail("Choose a category.");
+  }
+  if (!title && !text && !linkUrl && !image && !keepsImage && !event) fail("Add a note, a link, or a picture.");
+  return { sectionId: resolved, title, body: text, linkUrl, image, eventDate, category };
 }
 
 function parseImage(value) {

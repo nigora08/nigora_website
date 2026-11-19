@@ -9,6 +9,7 @@ export default function App() {
   const [active, setActive] = useState(() => sectionFromHash(window.location.hash));
   const [turning, setTurning] = useState(false);
   const [content, setContent] = useState({});
+  const [categories, setCategories] = useState([]);
   const [session, setSession] = useState({ editing: false, needsSetup: false });
   const [gateOpen, setGateOpen] = useState(false);
   const [password, setPassword] = useState("");
@@ -50,7 +51,10 @@ export default function App() {
   useEffect(() => {
     getSession().then(setSession).catch(() => {});
     getContent()
-      .then((data) => setContent(data.sections || {}))
+      .then((data) => {
+        setContent(data.sections || {});
+        setCategories(Array.isArray(data.categories) ? data.categories : []);
+      })
       .catch(() => {});
   }, []);
 
@@ -121,6 +125,12 @@ export default function App() {
     setGateOpen(false);
   }
 
+  function onChanged(data) {
+    if (!data?.sections) return;
+    setContent(data.sections);
+    if (Array.isArray(data.categories)) setCategories(data.categories);
+  }
+
   const current = SECTIONS.find((section) => section.id === active);
   const entries = current ? content[current.id] || [] : [];
 
@@ -140,8 +150,10 @@ export default function App() {
               <SectionBoard
                 section={current}
                 entries={entries}
+                categories={categories}
                 editing={session.editing}
-                onChanged={setContent}
+                onChanged={onChanged}
+                onCategories={setCategories}
               />
             ) : null}
           </div>

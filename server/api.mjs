@@ -1,6 +1,6 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
-import { SECTIONS } from "../src/sections.js";
+import { EVENT_CATEGORIES, EVENT_SECTION_ID, SECTIONS, isRealDate, matchCategory, tidyCategory } from "../src/sections.js";
 import { sql } from "./db.mjs";
 
 const scryptAsync = promisify(scrypt);
@@ -20,26 +20,25 @@ export async function handleApi(req, res) {
         needsSetup: (await passwordMode()) === "none",
       });
     }
-    if (req.method === "GET" && url.pathname === "/api/content") {
-      return json(res, { sections: await loadSections() });
-    }
+    if (req.method === "GET" && url.pathname === "/api/content") return await saved(res);
     const media = url.pathname.match(/^\/api\/media\/([a-zA-Z0-9-]+)$/);
-    if (req.method === "GET" && media) return sendMedia(res, media[1]);
+    if (req.method === "GET" && media) return await sendMedia(res, media[1]);
 
     if (!sameOrigin(req)) return json(res, { error: "That request was refused." }, 403);
 
-    if (req.method === "POST" && url.pathname === "/api/setup") return setup(req, res);
-    if (req.method === "POST" && url.pathname === "/api/login") return login(req, res);
-    if (req.method === "POST" && url.pathname === "/api/logout") return logout(req, res);
+    if (req.method === "POST" && url.pathname === "/api/setup") return await setup(req, res);
+    if (req.method === "POST" && url.pathname === "/api/login") return await login(req, res);
+    if (req.method === "POST" && url.pathname === "/api/logout") return await logout(req, res);
 
     if (!(await isEditor(req))) return json(res, { error: "Sign in to edit." }, 401);
 
-    if (req.method === "POST" && url.pathname === "/api/entries") return createEntry(req, res);
+    if (req.method === "POST" && url.pathname === "/api/categories") return await addCategory(req, res);
+    if (req.method === "POST" && url.pathname === "/api/entries") return await createEntry(req, res);
     const entry = url.pathname.match(/^\/api\/entries\/([a-zA-Z0-9-]+)$/);
-    if (entry && req.method === "PATCH") return updateEntry(req, res, entry[1]);
-    if (entry && req.method === "DELETE") return deleteEntry(res, entry[1]);
+    if (entry && req.method === "PATCH") return await updateEntry(req, res, entry[1]);
+    if (entry && req.method === "DELETE") return await deleteEntry(res, entry[1]);
     const move = url.pathname.match(/^\/api\/entries\/([a-zA-Z0-9-]+)\/move$/);
-    if (move && req.method === "POST") return moveEntry(req, res, move[1]);
+    if (move && req.method === "POST") return await moveEntry(req, res, move[1]);
 
     return json(res, { error: "Not found." }, 404);
   } catch (error) {
@@ -94,29 +93,40 @@ async function createEntry(req, res) {
   let imageId = null;
   if (input.image) imageId = await storeImage(input.image);
   await sql(
-    `insert into entries (id, section_id, title, body, link_url, image_id, position)
-     values ($1, $2, $3, $4, $5, $6, $7)`,
-    [id, input.sectionId, input.title, input.body, input.linkUrl, imageId, Number(positions[0].max) + 1],
+    `insert into entries (id, section_id, title, body, link_url, image_id, position, event_date, category)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [
+      id,
+      input.sectionId,
+      input.title,
+      input.body,
+      input.linkUrl,
+      imageId,
+      Number(positions[0].max) + 1,
+      input.eventDate,
+      input.category,
+    ],
   );
-  return json(res, { sections: await loadSections() });
+  return saved(res);
 }
 
 async function updateEntry(req, res, id) {
-  const current = await sql("select image_id from entries where id = $1", [id]);
+  const current = await sql("select image_id, section_id from entries where id = $1", [id]);
   if (!current[0]) return json(res, { error: "That piece is gone." }, 404);
   const input = await readEntry(await readJson(req), {
     partial: true,
     hasImage: Boolean(current[0].image_id),
+    sectionId: current[0].section_id,
   });
   let imageId = current[0].image_id;
   if (input.image === null) imageId = null;
   if (input.image) imageId = await storeImage(input.image);
   await sql(
-    "update entries set title = $2, body = $3, link_url = $4, image_id = $5 where id = $1",
-    [id, input.title, input.body, input.linkUrl, imageId],
+    "update entries set title = $2, body = $3, link_url = $4, image_id = $5, event_date = $6, category = $7 where id = $1",
+    [id, input.title, input.body, input.linkUrl, imageId, input.eventDate, input.category],
   );
   if (current[0].image_id && current[0].image_id !== imageId) await deleteImageIfUnused(current[0].image_id);
-  return json(res, { sections: await loadSections() });
+  return saved(res);
 }
 
 async function deleteEntry(res, id) {
@@ -124,13 +134,11 @@ async function deleteEntry(res, id) {
   if (!current[0]) return json(res, { error: "That piece is gone." }, 404);
   await sql("delete from entries where id = $1", [id]);
   if (current[0].image_id) await deleteImageIfUnused(current[0].image_id);
-  return json(res, { sections: await loadSections() });
+  return saved(res);
 }
 
 async function moveEntry(req, res, id) {
   const body = await readJson(req);
-  const direction = body.direction === "up" ? -1 : body.direction === "down" ? 1 : 0;
-  if (!direction) return json(res, { error: "Choose a direction." }, 400);
   const current = await sql("select section_id from entries where id = $1", [id]);
   if (!current[0]) return json(res, { error: "That piece is gone." }, 404);
   const rows = await sql(
@@ -138,17 +146,34 @@ async function moveEntry(req, res, id) {
     [current[0].section_id],
   );
   const index = rows.findIndex((row) => row.id === id);
-  const swap = rows[index + direction];
-  if (swap) {
-    await sql("update entries set position = $2 where id = $1", [id, index + direction]);
-    await sql("update entries set position = $2 where id = $1", [swap.id, index]);
+  let target = null;
+  if (body.direction === "up") target = index - 1;
+  else if (body.direction === "down") target = index + 1;
+  else if (Number.isInteger(body.to)) target = body.to;
+  else return json(res, { error: "Choose a direction." }, 400);
+  const order = rows.map((row) => row.id);
+  if (target !== index && target >= 0 && target < order.length) {
+    const [moved] = order.splice(index, 1);
+    order.splice(target, 0, moved);
+    for (let position = 0; position < order.length; position += 1) {
+      await sql("update entries set position = $2 where id = $1", [order[position], position]);
+    }
   }
-  return json(res, { sections: await loadSections() });
+  return saved(res);
+}
+
+async function addCategory(req, res) {
+  const body = await readJson(req);
+  const tidy = tidyCategory(body.name);
+  if (!tidy) return json(res, { error: "Name that category." }, 400);
+  const existing = matchCategory(tidy, await loadCategories());
+  if (!existing) await sql("insert into categories (name) values ($1)", [tidy]);
+  return json(res, { categories: await loadCategories(), name: existing || tidy });
 }
 
 async function loadSections() {
   const rows = await sql(
-    `select id, section_id, title, body, link_url, image_id, position
+    `select id, section_id, title, body, link_url, image_id, position, event_date, category
      from entries
      order by position asc, created_at asc`,
   );
@@ -161,9 +186,21 @@ async function loadSections() {
       body: row.body,
       linkUrl: row.link_url,
       imageId: row.image_id,
+      eventDate: row.event_date || "",
+      category: row.category || "",
     });
   }
   return sections;
+}
+
+async function loadCategories() {
+  const rows = await sql("select name from categories order by lower(name) asc");
+  const builtin = new Set(EVENT_CATEGORIES.map((name) => name.toLowerCase()));
+  return rows.map((row) => row.name).filter((name) => !builtin.has(String(name).toLowerCase()));
+}
+
+async function saved(res) {
+  return json(res, { sections: await loadSections(), categories: await loadCategories() });
 }
 
 async function sendMedia(res, id) {
@@ -190,9 +227,9 @@ async function deleteImageIfUnused(id) {
   if (used.length === 0) await sql("delete from images where id = $1", [id]);
 }
 
-async function readEntry(body, { partial = false, hasImage = false } = {}) {
-  const sectionId = String(body.sectionId || "");
-  if (!partial && !SECTION_IDS.has(sectionId)) fail(400, "Choose a section.");
+async function readEntry(body, { partial = false, hasImage = false, sectionId = "" } = {}) {
+  const resolved = partial ? sectionId : String(body.sectionId || "");
+  if (!partial && !SECTION_IDS.has(resolved)) fail(400, "Choose a section.");
   const title = String(body.title || "").trim().slice(0, 200);
   const text = String(body.body || "").trim().slice(0, 20000);
   const linkUrl = cleanLink(body.linkUrl);
@@ -200,10 +237,28 @@ async function readEntry(body, { partial = false, hasImage = false } = {}) {
   if (body.image === null) image = null;
   else if (body.image) image = parseImage(body.image);
   const keepsImage = image === undefined && hasImage;
-  if (!title && !text && !linkUrl && !image && !keepsImage) {
+  const event = resolved === EVENT_SECTION_ID;
+  const eventDate = cleanDate(body.eventDate, event);
+  const category = await cleanCategory(body.category, event);
+  if (!title && !text && !linkUrl && !image && !keepsImage && !event) {
     fail(400, "Add a note, a link, or a picture.");
   }
-  return { sectionId, title, body: text, linkUrl, image };
+  return { sectionId: resolved, title, body: text, linkUrl, image, eventDate, category };
+}
+
+function cleanDate(value, required) {
+  const raw = String(value || "").trim();
+  if (!required) return "";
+  if (!raw) fail(400, "Add a date.");
+  if (!isRealDate(raw)) fail(400, "Use a real date.");
+  return raw;
+}
+
+async function cleanCategory(value, required) {
+  if (!required) return "";
+  const matched = matchCategory(value, await loadCategories());
+  if (!matched) fail(400, "Choose a category.");
+  return matched;
 }
 
 function parseImage(value) {

@@ -176,6 +176,7 @@ button {
   min-height: 0;
   overflow: auto;
   margin-bottom: clamp(0.4rem, 1.4vh, 0.9rem);
+  container-type: inline-size;
 }
 
 .board h2,
@@ -220,6 +221,62 @@ button {
   color: inherit;
 }
 
+.entry-meta {
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  opacity: 0.82;
+}
+
+.entries.gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.entries.gallery .entry {
+  margin-top: 0;
+  min-width: 0;
+}
+
+.entries.gallery .shot {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.entries.gallery .entry img {
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+  height: auto;
+  margin: 0;
+  object-fit: contain;
+}
+
+.entries.gallery .entry.over .shot {
+  outline: 1px solid var(--active);
+  outline-offset: 3px;
+}
+
+.entries.gallery .entry h3 {
+  margin-top: 0.4rem;
+  font-size: 1.05rem;
+}
+
+@container (max-width: 720px) {
+  .entries.gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 460px) {
+  .entries.gallery {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .composer,
 .gate {
   display: grid;
@@ -230,6 +287,7 @@ button {
 
 .composer input,
 .composer textarea,
+.composer select,
 .gate input,
 .file {
   width: 100%;
@@ -251,6 +309,17 @@ button {
 .gate input::placeholder {
   color: var(--text);
   opacity: 0.55;
+}
+
+.composer select {
+  min-height: 44px;
+}
+
+.category-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
 }
 
 .file {
@@ -465,7 +534,6 @@ nav button {
   font-size: 1.02rem;
   line-height: 1.25;
   text-align: right;
-  white-space: nowrap;
   animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
