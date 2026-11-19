@@ -25,6 +25,7 @@ function editorApi() {
 }
 
 export default defineConfig({
+  base: "/nigora_website/",
   plugins: [react(), editorApi()],
   server: {
     host: "0.0.0.0",

@@ -127,8 +127,8 @@ export default function App() {
   return (
     <>
       <div className="field" aria-hidden="true">
-        <img className="for-light" src="/images/surface-pale.jpg" alt="" />
-        <img className="for-dark" src="/images/ink-night.jpg" alt="" />
+        <img className="for-light" src={`${import.meta.env.BASE_URL}images/surface-pale.jpg`} alt="" />
+        <img className="for-dark" src={`${import.meta.env.BASE_URL}images/ink-night.jpg`} alt="" />
       </div>
       <Ocean theme={theme} sectionId={active} />
       <div className="surface" aria-hidden="true" />
