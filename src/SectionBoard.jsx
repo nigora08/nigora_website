@@ -53,7 +53,7 @@ function Entry({ entry, editing, first, last, onChanged }) {
 
   return (
     <article className="entry">
-      {entry.imageId ? <img src={`/api/media/${entry.imageId}`} alt="" /> : null}
+      {entry.imageId ? <img src={imageSrc(entry.imageId)} alt="" /> : null}
       {entry.title ? <h3>{entry.title}</h3> : null}
       {entry.body ? <p>{entry.body}</p> : null}
       {entry.linkUrl ? (
@@ -190,6 +190,10 @@ function EntryForm({ submitLabel, initial, onSubmit }) {
       </button>
     </form>
   );
+}
+
+function imageSrc(id) {
+  return id.startsWith("data:") ? id : `/api/media/${id}`;
 }
 
 function linkLabel(url) {

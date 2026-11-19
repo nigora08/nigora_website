@@ -1,42 +1,57 @@
+import { browserCall } from "./browserEditor.js";
+
+let remote;
+
+function remoteAvailable() {
+  remote ??= probeRemote();
+  return remote;
+}
+
+async function probeRemote() {
+  try {
+    const response = await fetch("/api/session");
+    const type = response.headers.get("content-type") || "";
+    return response.ok && type.includes("json");
+  } catch {
+    return false;
+  }
+}
+
+async function remoteJson(path, { method = "GET", body, unavailable }) {
+  const response = await fetch(path, {
+    method,
+    headers: body === undefined ? undefined : { "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || unavailable);
+  return data;
+}
+
 export async function getSession() {
-  const response = await fetch("/api/session");
-  if (!response.ok) throw new Error("The editor is unavailable.");
-  return response.json();
+  if (!(await remoteAvailable())) return browserCall("GET", "/api/session");
+  return remoteJson("/api/session", { unavailable: "The editor is unavailable." });
 }
 
 export async function getContent() {
-  const response = await fetch("/api/content");
-  if (!response.ok) throw new Error("The page could not load.");
-  return response.json();
+  if (!(await remoteAvailable())) return browserCall("GET", "/api/content");
+  return remoteJson("/api/content", { unavailable: "The page could not load." });
 }
 
 export async function postJson(path, payload) {
-  const response = await fetch(path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "That did not save.");
-  return data;
+  if (!(await remoteAvailable())) return browserCall("POST", path, payload);
+  return remoteJson(path, { method: "POST", body: payload, unavailable: "That did not save." });
 }
 
 export async function patchJson(path, payload) {
-  const response = await fetch(path, {
-    method: "PATCH",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "That did not save.");
-  return data;
+  if (!(await remoteAvailable())) return browserCall("PATCH", path, payload);
+  return remoteJson(path, { method: "PATCH", body: payload, unavailable: "That did not save." });
 }
 
 export async function deleteEntry(id) {
-  const response = await fetch(`/api/entries/${id}`, { method: "DELETE" });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "That did not save.");
-  return data;
+  const path = `/api/entries/${id}`;
+  if (!(await remoteAvailable())) return browserCall("DELETE", path);
+  return remoteJson(path, { method: "DELETE", unavailable: "That did not save." });
 }
 
 export function shrinkImage(file) {
