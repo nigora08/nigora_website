@@ -62,13 +62,63 @@ button {
   outline-offset: 3px;
 }
 
+.field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.field img,
+.print img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.field .for-dark,
+.print .for-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .field .for-light,
+:root[data-theme="dark"] .print .for-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .field .for-dark,
+:root[data-theme="dark"] .print .for-dark {
+  display: block;
+}
+
+.field::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(243, 246, 245, 0.2), rgba(243, 246, 245, 0.55) 72%),
+    linear-gradient(180deg, rgba(243, 246, 245, 0.08), rgba(243, 246, 245, 0.78));
+}
+
+:root[data-theme="dark"] .field::after {
+  background:
+    linear-gradient(90deg, rgba(12, 13, 15, 0.28), rgba(12, 13, 15, 0.62) 70%),
+    linear-gradient(180deg, rgba(12, 13, 15, 0.2), rgba(12, 13, 15, 0.72));
+}
+
 .ocean {
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
+  opacity: 0.28;
+}
+
+:root[data-theme="dark"] .ocean {
+  opacity: 0.4;
 }
 
 .surface {
@@ -111,8 +161,58 @@ button {
   flex-direction: column;
   justify-content: flex-end;
   min-width: 0;
-  padding: clamp(1.5rem, 6vh, 4rem) clamp(1rem, 3vw, 2.5rem) clamp(2.2rem, 10vh, 6.75rem)
+  min-height: 0;
+  padding: clamp(1.25rem, 4vh, 2.6rem) clamp(1rem, 3vw, 2.5rem) clamp(2rem, 8vh, 5.4rem)
     clamp(1.4rem, 5.2vw, 5.6rem);
+}
+
+.prints {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: clamp(1rem, 3vh, 2rem);
+}
+
+.print {
+  position: absolute;
+  margin: 0;
+  padding: 0.42rem;
+  background: #f6f3ee;
+  box-shadow: 0 16px 36px rgba(8, 36, 42, 0.16);
+  overflow: hidden;
+}
+
+.print img {
+  height: 100%;
+}
+
+:root[data-theme="dark"] .print {
+  background: #16181b;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.print-shafts {
+  top: 2%;
+  left: 0;
+  width: min(38%, 250px);
+  height: 78%;
+  animation: tilt-a 14s ease-in-out infinite alternate;
+}
+
+.print-surface {
+  top: 8%;
+  left: 24%;
+  width: min(68%, 520px);
+  height: 46%;
+  animation: tilt-b 16s ease-in-out infinite alternate;
+}
+
+.print-caustic {
+  right: 6%;
+  bottom: 2%;
+  width: min(42%, 280px);
+  height: 40%;
+  animation: tilt-c 13s ease-in-out infinite alternate;
 }
 
 h1 {
@@ -264,7 +364,25 @@ nav button:hover {
   }
 
   .stage {
-    padding: 1.15rem 0.7rem 12vh 1.05rem;
+    padding: 0.85rem 0.55rem 8vh 0.85rem;
+  }
+
+  .print-surface {
+    display: none;
+  }
+
+  .print-shafts {
+    top: 0;
+    left: 0;
+    width: 74%;
+    height: 68%;
+  }
+
+  .print-caustic {
+    right: 0;
+    bottom: 0;
+    width: 68%;
+    height: 42%;
   }
 
   h1 {
@@ -309,6 +427,7 @@ nav button:hover {
   h1 span,
   h1 span:last-child,
   nav button,
+  .print,
   .flash.on {
     animation: none;
   }
@@ -332,6 +451,21 @@ nav button:hover {
   to {
     transform: translateY(-7px);
   }
+}
+
+@keyframes tilt-a {
+  from { transform: rotate(-3deg) translateY(0); }
+  to { transform: rotate(-1.2deg) translateY(-10px); }
+}
+
+@keyframes tilt-b {
+  from { transform: rotate(1.6deg) translateY(0); }
+  to { transform: rotate(0.4deg) translateY(8px); }
+}
+
+@keyframes tilt-c {
+  from { transform: rotate(-1deg) translateY(0); }
+  to { transform: rotate(1.2deg) translateY(-8px); }
 }
 
 @keyframes flash {

@@ -53,11 +53,27 @@ export default function App() {
 
   return (
     <>
+      <div className="field" aria-hidden="true">
+        <img className="for-light" src="/images/surface-pale.jpg" alt="" />
+        <img className="for-dark" src="/images/ink-night.jpg" alt="" />
+      </div>
       <Ocean theme={theme} sectionId={active} />
       <div className="surface" aria-hidden="true" />
       <div className={turning ? "flash on" : "flash"} aria-hidden="true" />
       <div className="shell">
         <main className="stage">
+          <div className="prints">
+            <figure className="print print-shafts">
+              <img src="/images/shafts-teal.jpg" alt="" />
+            </figure>
+            <figure className="print print-surface">
+              <img className="for-light" src="/images/surface-pale.jpg" alt="" />
+              <img className="for-dark" src="/images/ink-night.jpg" alt="" />
+            </figure>
+            <figure className="print print-caustic">
+              <img src="/images/caustic-sand.jpg" alt="" />
+            </figure>
+          </div>
           <h1>
             <span>My name is</span>
             <span>Nigora</span>
