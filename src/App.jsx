@@ -11,6 +11,8 @@ export default function App() {
   const [content, setContent] = useState({});
   const [categories, setCategories] = useState([]);
   const [session, setSession] = useState({ editing: false, needsSetup: false });
+  const [sessionKnown, setSessionKnown] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
@@ -49,7 +51,15 @@ export default function App() {
   }, [active]);
 
   useEffect(() => {
-    getSession().then(setSession).catch(() => {});
+    getSession()
+      .then((next) => {
+        setSession(next);
+        setSessionKnown(true);
+      })
+      .catch(() => {
+        setOffline(true);
+        setSessionKnown(true);
+      });
     getContent()
       .then((data) => {
         setContent(data.sections || {});
@@ -211,7 +221,10 @@ export default function App() {
               Edit
             </button>
           )}
-          {gateOpen && !session.editing ? (
+          {gateOpen && !session.editing && offline ? (
+            <p className="form-error">The editor is unavailable.</p>
+          ) : null}
+          {gateOpen && !session.editing && sessionKnown && !offline ? (
             <form className="gate" onSubmit={submitPassword}>
               <input
                 type="password"

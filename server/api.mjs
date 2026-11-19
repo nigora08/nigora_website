@@ -79,7 +79,7 @@ async function login(req, res) {
 async function logout(req, res) {
   const token = cookies(req)[COOKIE];
   if (token) await sql("delete from sessions where token_hash = $1", [digest(token)]);
-  res.setHeader("set-cookie", `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+  res.setHeader("set-cookie", `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureCookie(req)}`);
   return json(res, { editing: false });
 }
 
@@ -339,11 +339,17 @@ async function startSession(req, res) {
   const token = randomBytes(32).toString("hex");
   const expires = new Date(Date.now() + SESSION_MS);
   await sql("insert into sessions (token_hash, expires_at) values ($1, $2)", [digest(token), expires.toISOString()]);
-  const secure = req.headers["x-forwarded-proto"] === "https" ? "; Secure" : "";
+  const secure = secureCookie(req);
   res.setHeader(
     "set-cookie",
     `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_MS / 1000}${secure}`,
   );
+}
+
+function secureCookie(req) {
+  const forwarded = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+  if (forwarded === "https") return "; Secure";
+  return /proto=https/i.test(String(req.headers.forwarded || "")) ? "; Secure" : "";
 }
 
 function digest(value) {
@@ -363,12 +369,23 @@ function cookies(req) {
 function sameOrigin(req) {
   const origin = req.headers.origin;
   if (!origin) return false;
-  const host = req.headers["x-forwarded-host"] || req.headers.host;
   try {
-    return new URL(origin).host === host;
+    const from = new URL(origin).host;
+    const allowed = [
+      ...listedHosts(req.headers["x-forwarded-host"]),
+      ...listedHosts(req.headers.host),
+    ];
+    return allowed.includes(from);
   } catch {
     return false;
   }
+}
+
+function listedHosts(value) {
+  return String(value || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
 function clientIp(req) {
