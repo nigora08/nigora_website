@@ -154,7 +154,7 @@ export default function App() {
       <div className="surface" aria-hidden="true" />
       <div className={turning ? "flash on" : "flash"} aria-hidden="true" />
       <div className="shell">
-        <main className="stage">
+        <main className={current ? "stage reading" : "stage"}>
           <div className="open-water">
             {current ? (
               <SectionBoard
@@ -175,8 +175,8 @@ export default function App() {
           </div>
           <div className="name">
             <h1>
-              <span>My name is</span>
-              <span>Nigora</span>
+              <span className="greeting">My name is</span>
+              <span className="who">Nigora</span>
             </h1>
           </div>
         </main>

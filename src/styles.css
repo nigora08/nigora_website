@@ -419,7 +419,8 @@ button {
 
 .name {
   position: relative;
-  transform: translate3d(calc(var(--current-x, 0) * 16px), calc(var(--current-y, 0) * 10px), 0);
+  max-width: 16em;
+  transform: translate3d(calc(var(--current-x, 0) * 8px), calc(var(--current-y, 0) * 5px), 0);
 }
 
 .name::before {
@@ -444,34 +445,49 @@ h1 {
   max-width: 100%;
   color: var(--text);
   font-family: "Newsreader Variable", Newsreader, serif;
-  font-weight: 460;
-  font-size: clamp(2.15rem, 6.6vw, 6.35rem);
+  font-weight: 450;
   font-optical-sizing: none;
-  font-variation-settings: "opsz" 72;
-  letter-spacing: -0.034em;
-  line-height: 0.9;
-}
-
-h1 span {
-  display: block;
-}
-
-h1 span:first-child {
+  line-height: 1;
   animation: rise 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-h1 span:last-child {
-  animation:
-    rise 1.15s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both,
-    drift 9s ease-in-out 1.2s infinite alternate;
+.greeting {
+  display: block;
+  margin: 0 0 0.72rem;
+  font-family: "Source Sans 3 Variable", "Source Sans 3", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 460;
+  font-variation-settings: "wght" 460;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  opacity: 0.72;
 }
 
-h1 span:last-child::after {
+.who {
+  display: block;
+  font-size: clamp(3rem, 5.1vw, 4.7rem);
+  font-weight: 450;
+  font-variation-settings: "opsz" 72, "wght" 450;
+  letter-spacing: -0.028em;
+  line-height: 0.86;
+  transition: font-size 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stage.reading .greeting {
+  margin-bottom: 0.28rem;
+  font-size: 0.84rem;
+}
+
+.stage.reading .who {
+  font-size: clamp(1.85rem, 2.8vw, 2.35rem);
+}
+
+.who::after {
   content: "";
   display: block;
-  width: min(42%, 9.5rem);
+  width: 2.1em;
   height: 1px;
-  margin-top: 0.22em;
+  margin-top: 0.42em;
   background: linear-gradient(90deg, var(--mark), transparent);
   transform-origin: left center;
   animation: glint 6.5s ease-in-out infinite;
@@ -601,8 +617,12 @@ nav button:hover {
     padding: 0.85rem 0.55rem 8vh 0.85rem;
   }
 
-  h1 {
-    font-size: clamp(2rem, 8.4vw, 2.7rem);
+  .who {
+    font-size: clamp(2.35rem, 9vw, 2.85rem);
+  }
+
+  .stage.reading .who {
+    font-size: 1.7rem;
   }
 
   .rail {
@@ -649,9 +669,8 @@ nav button:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  h1 span,
-  h1 span:last-child,
-  h1 span:last-child::after,
+  h1,
+  .who::after,
   nav button,
   .field img,
   .waterline svg,
